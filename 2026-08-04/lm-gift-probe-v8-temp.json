@@ -1,0 +1,50 @@
+{
+  "id": "7U8ON4hJloLIIPNb",
+  "name": "LM Gift Probe v8 (temp)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "41b74712-933c-4ffb-ad51-14b10452fca5",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "487c19e4-235c-485f-b75e-283ed8092f2b",
+      "name": "Probe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const H=this.helpers;\nconst UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';\nconst r={};\nasync function g(u){return await H.httpRequest({method:'GET',url:u,json:true,headers:{'User-Agent':UA,'Accept':'application/json'}});}\ntry{\n  // find bella-elite in the list\n  let found=null, pagesChecked=0;\n  for(let page=1;page<=8;page++){\n    const res=await g('https://www.lentillesmaroc.ma/wp-json/wc/store/products?per_page=100&page='+page);\n    const arr=Array.isArray(res)?res:(res&&res.products?res.products:[]);\n    pagesChecked++;\n    if(!arr.length) break;\n    for(const p of arr){ if(String(p.permalink||'').includes('bella-elite-collection')){ found=p; break; } }\n    if(found) break;\n    if(arr.length<100) break;\n  }\n  r.pagesChecked=pagesChecked;\n  if(found){\n    r.id=found.id; r.permalink=found.permalink; r.type=found.type;\n    r.hasShortDesc=('short_description' in found);\n    r.shortDescLen=(found.short_description||'').length;\n    r.shortDescSnippet=String(found.short_description||'').replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').slice(0,220);\n    r.keys=Object.keys(found);\n  } else { r.note='bella-elite not found in list'; }\n  // compare with single endpoint\n  const one=await g('https://www.lentillesmaroc.ma/wp-json/wc/store/products/526');\n  const o=one||{};\n  r.singleShortDescLen=(o.short_description||'').length;\n  r.singleSnippet=String(o.short_description||'').replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').slice(0,220);\n}catch(e){ r.error=String((e&&e.message)||e).slice(0,300); }\nreturn [{json:r}];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Probe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}
