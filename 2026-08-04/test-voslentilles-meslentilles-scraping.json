@@ -1,0 +1,129 @@
+{
+  "id": "rVgdMacP4U4897tz",
+  "name": "TEST - VosLentilles MesLentilles Scraping",
+  "active": false,
+  "nodes": [
+    {
+      "id": "b695741e-2dc7-4e0c-af35-e7bf9999d9da",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "eb3089b7-2a60-4cda-a10f-296c3b423f07",
+      "name": "Build Test URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const urls = [\n  { site: 'meslentilles', type: 'cat_mensuelle', url: 'https://meslentilles.ma/categorie-produit/lentilles/mensuelle/' },\n  { site: 'meslentilles', type: 'cat_journaliere', url: 'https://meslentilles.ma/categorie-produit/lentilles/journaliere/' },\n  { site: 'meslentilles', type: 'cat_entretien', url: 'https://meslentilles.ma/categorie-produit/produits-entretien/' }\n];\nreturn urls.map(u => ({ json: u }));"
+      }
+    },
+    {
+      "id": "ae75bc11-d13e-4c86-a460-9edee5fc3613",
+      "name": "Fetch Test",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 Chrome/126 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "*/*"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text",
+              "outputPropertyName": "html"
+            }
+          },
+          "timeout": 30000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 500
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "19e184fe-8bc1-4a39-9a6c-d6cce7bd6650",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "\nconst inputs = $input.all();\nconst meta = $('Build Test URLs').all().map(i => i.json);\nreturn inputs.map((item, i) => {\n  const j = item.json || {};\n  const m = meta[i] || {};\n  const html = String(j.html || '');\n  return { json: {\n    site: m.site,\n    type: m.type,\n    url: m.url,\n    statusCode: j.statusCode,\n    bodyLength: html.length,\n    sample: html.slice(0, 200)\n  }};\n});\n"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Build Test URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Test URLs": {
+      "main": [
+        [
+          {
+            "node": "Fetch Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Test": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  }
+}
